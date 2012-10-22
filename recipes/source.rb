@@ -25,7 +25,6 @@ end
 include_recipe "erlang"
 
 couchdb_tar_gz = File.join(Chef::Config[:file_cache_path], "/", "apache-couchdb-#{node['couch_db']['src_version']}.tar.gz")
-compile_flags = String.new
 dev_pkgs = Array.new
 
 case node['platform']
@@ -46,8 +45,8 @@ when "debian", "ubuntu"
     package pkg
   end
 
-  if node['platform_version'].to_f >= 10.04
-    compile_flags = "--with-js-lib=/usr/lib/xulrunner-devel-1.9.2.8/lib --with-js-include=/usr/lib/xulrunner-devel-1.9.2.8/include"
+  if node['platform_version'].to_f >= 10.04 && (node["couch_db"]["compile_flags"].nil? || node["couch_db"]["compile_flags"].empty?)
+    node.set["couch_db"]["compile_flags"] = "--with-js-lib=/usr/lib/xulrunner-devel-1.9.2.8/lib --with-js-include=/usr/lib/xulrunner-devel-1.9.2.8/include #{node["couch_db"]["compile_flags"]}"
   end
 end
 
@@ -60,7 +59,7 @@ bash "install couchdb #{node['couch_db']['src_version']}" do
   cwd Chef::Config[:file_cache_path]
   code <<-EOH
     tar -zxf #{couchdb_tar_gz}
-    cd apache-couchdb-#{node['couch_db']['src_version']} && ./configure #{compile_flags} && make && make install
+    cd apache-couchdb-#{node['couch_db']['src_version']} && #{node["couch_db"]["compile_env"]} ./configure #{node["couch_db"]["compile_flags"]} && make && make install
   EOH
   not_if { ::FileTest.exists?("/usr/local/bin/couchdb") }
 end
